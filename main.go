@@ -3,6 +3,8 @@ package main
 import (
 	"go-graphql/graphql/handler"
 	"go-graphql/graphql/repository"
+	"go-graphql/graphql/resolver"
+	"go-graphql/graphql/schema"
 	"go-graphql/graphql/service"
 	"go-graphql/pkg/database"
 	"net/http"
@@ -11,6 +13,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
+	"github.com/graphql-go/graphql"
 	gqlHandler "github.com/graphql-go/handler"
 	"github.com/valyala/fasthttp/fasthttpadaptor"
 )
@@ -20,6 +23,13 @@ func main() {
 	repo := repository.NewCustomerRepository(db)
 	srv := service.NewCustomerService(repo)
 	hdl := handler.NewCustomerHandler(srv)
+
+	cResolver := resolver.NewCustomerResolver(srv)
+	cSchema := schema.NewCustomerSchema(cResolver)
+	graphqlSchema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    cSchema.Query(),
+		Mutation: cSchema.Mutation(),
+	})
 
 	gh := gqlHandler.New(&gqlHandler.Config{
 		Schema:   &graphqlSchema,
@@ -57,8 +67,8 @@ func main() {
 		return nil
 	})
 
-	err := app.Listen(":3000")
-	if err != nil {
+	errAppListen := app.Listen(":3000")
+	if errAppListen != nil {
 		panic(err)
 	}
 }
